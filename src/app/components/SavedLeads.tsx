@@ -2,52 +2,43 @@
 
 import { useState, useEffect, useCallback } from "react";
 import LeadCard from "./LeadCard";
-import { ScoredLead } from "@/lib/scoring";
+import {
+  getSavedLeads,
+  updateLeadStatus,
+  getLeadStats,
+  exportLeadsCSV,
+  SavedLead,
+} from "@/lib/client-db";
 
 export default function SavedLeads() {
-  const [leads, setLeads] = useState<Array<ScoredLead & { status: string }>>([]);
+  const [leads, setLeads] = useState<SavedLead[]>([]);
   const [stats, setStats] = useState({ total: 0, new: 0, contacted: 0, converted: 0, avgScore: 0 });
   const [filter, setFilter] = useState<string>("all");
-  const [loading, setLoading] = useState(true);
 
-  const fetchLeads = useCallback(async () => {
-    try {
-      const params = new URLSearchParams();
-      if (filter !== "all") params.set("status", filter);
-      const res = await fetch(`/api/leads?${params}`);
-      const data = await res.json();
-      setLeads(data.leads || []);
-      setStats(data.stats || { total: 0, new: 0, contacted: 0, converted: 0, avgScore: 0 });
-    } catch (error) {
-      console.error("Failed to fetch leads:", error);
-    } finally {
-      setLoading(false);
-    }
+  const refresh = useCallback(() => {
+    setLeads(getSavedLeads({ status: filter !== "all" ? filter : undefined }));
+    setStats(getLeadStats());
   }, [filter]);
 
   useEffect(() => {
-    fetchLeads();
-  }, [fetchLeads]);
+    refresh();
+  }, [refresh]);
 
-  const updateStatus = async (placeId: string, status: string) => {
-    await fetch("/api/leads", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ placeId, status }),
-    });
-    fetchLeads();
+  const handleUpdateStatus = (placeId: string, status: string) => {
+    updateLeadStatus(placeId, status);
+    refresh();
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <svg className="animate-spin h-8 w-8 text-blue-500" viewBox="0 0 24 24">
-          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-        </svg>
-      </div>
-    );
-  }
+  const handleExport = () => {
+    const csv = exportLeadsCSV();
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `leads-${new Date().toISOString().split("T")[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <div className="space-y-4">
@@ -86,12 +77,14 @@ export default function SavedLeads() {
             {s}
           </button>
         ))}
-        <a
-          href="/api/export"
-          className="ml-auto px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-sm rounded-lg transition-colors"
-        >
-          Export CSV
-        </a>
+        {stats.total > 0 && (
+          <button
+            onClick={handleExport}
+            className="ml-auto px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-sm rounded-lg transition-colors"
+          >
+            Export CSV
+          </button>
+        )}
       </div>
 
       {/* Lead List */}
@@ -103,12 +96,12 @@ export default function SavedLeads() {
       ) : (
         <div className="space-y-3">
           {leads.map((lead) => (
-            <div key={lead.place_id} className="relative">
+            <div key={lead.place_id}>
               <LeadCard lead={lead} isSaved />
               <div className="flex gap-2 px-4 pb-3 -mt-1">
                 {lead.status !== "contacted" && (
                   <button
-                    onClick={() => updateStatus(lead.place_id, "contacted")}
+                    onClick={() => handleUpdateStatus(lead.place_id, "contacted")}
                     className="text-xs px-2 py-1 bg-amber-600/20 text-amber-400 rounded hover:bg-amber-600/30"
                   >
                     Mark Contacted
@@ -116,7 +109,7 @@ export default function SavedLeads() {
                 )}
                 {lead.status !== "converted" && (
                   <button
-                    onClick={() => updateStatus(lead.place_id, "converted")}
+                    onClick={() => handleUpdateStatus(lead.place_id, "converted")}
                     className="text-xs px-2 py-1 bg-emerald-600/20 text-emerald-400 rounded hover:bg-emerald-600/30"
                   >
                     Mark Converted
@@ -124,7 +117,7 @@ export default function SavedLeads() {
                 )}
                 {lead.status !== "rejected" && (
                   <button
-                    onClick={() => updateStatus(lead.place_id, "rejected")}
+                    onClick={() => handleUpdateStatus(lead.place_id, "rejected")}
                     className="text-xs px-2 py-1 bg-red-600/20 text-red-400 rounded hover:bg-red-600/30"
                   >
                     Reject

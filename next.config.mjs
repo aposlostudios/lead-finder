@@ -8,9 +8,6 @@ const withPWA = withPWAInit({
 });
 
 /** @type {import('next').NextConfig} */
-const nextConfig = {
-  // Allow server-side native modules (better-sqlite3)
-  serverExternalPackages: ["better-sqlite3"],
-};
+const nextConfig = {};
 
 export default withPWA(nextConfig);

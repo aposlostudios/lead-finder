@@ -6,6 +6,7 @@ import LeadCard from "./components/LeadCard";
 import StatsBar from "./components/StatsBar";
 import SavedLeads from "./components/SavedLeads";
 import { ScoredLead } from "@/lib/scoring";
+import { saveLeadsToStorage, isLeadSaved } from "@/lib/client-db";
 
 type Tab = "search" | "saved";
 
@@ -49,43 +50,20 @@ export default function Home() {
     }
   };
 
-  const handleSave = async (lead: ScoredLead) => {
-    try {
-      const res = await fetch("/api/leads", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ leads: [lead] }),
-      });
-
-      if (res.ok) {
-        setSavedIds((prev) => new Set(prev).add(lead.place_id));
-      }
-    } catch (error) {
-      console.error("Failed to save lead:", error);
-    }
+  const handleSave = (lead: ScoredLead) => {
+    saveLeadsToStorage([lead]);
+    setSavedIds((prev) => new Set(prev).add(lead.place_id));
   };
 
-  const handleSaveAll = async () => {
+  const handleSaveAll = () => {
     const unsaved = leads.filter((l) => !savedIds.has(l.place_id));
     if (unsaved.length === 0) return;
-
-    try {
-      const res = await fetch("/api/leads", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ leads: unsaved }),
-      });
-
-      if (res.ok) {
-        setSavedIds((prev) => {
-          const next = new Set(prev);
-          unsaved.forEach((l) => next.add(l.place_id));
-          return next;
-        });
-      }
-    } catch (error) {
-      console.error("Failed to save leads:", error);
-    }
+    saveLeadsToStorage(unsaved);
+    setSavedIds((prev) => {
+      const next = new Set(prev);
+      unsaved.forEach((l) => next.add(l.place_id));
+      return next;
+    });
   };
 
   const stats = {
