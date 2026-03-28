@@ -53,7 +53,6 @@ export async function findSocialMedia(
   address: string
 ): Promise<{ facebook?: string; instagram?: string; has_any: boolean }> {
   // Build a search-friendly name
-  const searchName = businessName.replace(/[^a-zA-Z0-9\s]/g, "").toLowerCase();
   const result: { facebook?: string; instagram?: string; has_any: boolean } = {
     has_any: false,
   };

@@ -6,7 +6,7 @@ import LeadCard from "./components/LeadCard";
 import StatsBar from "./components/StatsBar";
 import SavedLeads from "./components/SavedLeads";
 import { ScoredLead } from "@/lib/scoring";
-import { saveLeadsToStorage, isLeadSaved } from "@/lib/client-db";
+import { saveLeadsToStorage } from "@/lib/client-db";
 
 type Tab = "search" | "saved";
 
