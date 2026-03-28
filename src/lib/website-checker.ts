@@ -27,8 +27,8 @@ export async function checkWebsite(url: string): Promise<WebsiteStatus> {
     clearTimeout(timeout);
 
     if (!response.ok) {
-      if (response.status === 404 || response.status === 403) return "basic";
-      return "none";
+      // URL exists in Google but page returned an error — treat as basic site
+      return "basic";
     }
 
     const html = await response.text();
@@ -44,7 +44,8 @@ export async function checkWebsite(url: string): Promise<WebsiteStatus> {
 
     return "full";
   } catch {
-    return "none";
+    // Fetch failed (timeout, SSL, network) — but Google gave us a URL so trust it
+    return "full";
   }
 }
 
